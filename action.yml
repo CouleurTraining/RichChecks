@@ -36,16 +36,17 @@ runs:
       INPUT_DETAILS: ${{ inputs.details }}
     with:
       result-encoding: string
+      # ADD THIS LINE: Explicitly passes authentication to the nested script
+      github-token: ${{ github.token }} 
       script: |
         const [owner, repo] = process.env.GITHUB_REPOSITORY.split('/');
         
         let body = {
           owner: owner,
           repo: repo,
-          name: process.env.INPUT_NAME || process.env.GITHUB_REPOSITORY.split('/')[1],
+          name: process.env.INPUT_NAME || repo,
           head_sha: process.env.GITHUB_SHA,
           status: process.env.INPUT_STATUS,
-          // Add this line to handle the conclusion when status is completed
           conclusion: process.env.INPUT_STATUS === 'completed' ? 'success' : undefined, 
           output: {
             title: process.env.INPUT_TITLE,
