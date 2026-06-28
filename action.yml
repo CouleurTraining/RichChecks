@@ -45,6 +45,8 @@ runs:
           name: process.env.INPUT_NAME || process.env.GITHUB_REPOSITORY.split('/')[1],
           head_sha: process.env.GITHUB_SHA,
           status: process.env.INPUT_STATUS,
+          // Add this line to handle the conclusion when status is completed
+          conclusion: process.env.INPUT_STATUS === 'completed' ? 'success' : undefined, 
           output: {
             title: process.env.INPUT_TITLE,
             summary: process.env.INPUT_SUMMARY,
