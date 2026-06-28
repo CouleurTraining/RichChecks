@@ -46,7 +46,7 @@ runs:
   using: "composite"
   steps:
   - name: Set to update to completed
-    if: ${{ inputs.check-run-id != null }}
+    if:  ${{ inputs.check-run-id != '' && inputs.check-run-id != null }}
     id: update-check
     uses: actions/github-script@v8
     with:
@@ -57,7 +57,14 @@ runs:
         const owner = process.env.GITHUB_REPOSITORY.split('/')[0];
         const repo = process.env.GITHUB_REPOSITORY.split('/')[1];
         const name = "${{ inputs.name || github.event.repository.name }}";
-        const conclusion = "${{ inputs.conclusion }}".trim();
+        const status = "${{ inputs.status }}";
+        
+        let conclusion = "${{ inputs.conclusion }}".trim();
+        // Dynamic Fallback: If status is completed but conclusion is blank, default it to success
+        if (status === "completed" && conclusion === "") {
+          conclusion = "success";
+        }
+
         const shouldFailForNeutral = ("${{ inputs.fail-on-neutral }}" === "true");
         const shouldFailForNonSuccess = ("${{ inputs.fail-on-error }}" === "true");
         const successStates = ["neutral", "success"];
@@ -67,8 +74,7 @@ runs:
           repo,
           name,
           head_sha: commitSha,
-          check_run_id: "${{ inputs.check-run-id }}",
-          status: "${{ inputs.status }}",
+          status: status,
           output: {
             title: "${{ inputs.title }}",
             summary: "${{ inputs.summary }}",
@@ -76,24 +82,30 @@ runs:
           }
         };
         
-        if("${{ inputs.conclusion }}" !== ""){
-          body.conclusion = "${{ inputs.conclusion }}";
+        if (conclusion !== "") {
+          body.conclusion = conclusion;
         }
 
-        if(conclusion !== ""){
-          if(shouldFailForNonSuccess && !successStates.includes(conclusion)){
+        if (conclusion !== "") {
+          if (shouldFailForNonSuccess && !successStates.includes(conclusion)) {
             core.setFailed("check failed for non successive state");
           }
-          if(shouldFailForNeutral && conclusion == "neutral"){
+          if (shouldFailForNeutral && conclusion == "neutral") {
             core.setFailed("check failed for non successive state");
           }
         }
 
-        // update the check
-        const check = await github.rest.checks.update(body);
+        // CORRECTED: check_run_id must be passed as its own field alongside body properties
+        const check = await github.rest.checks.update({
+          owner,
+          repo,
+          check_run_id: "${{ inputs.check-run-id }}",
+          ...body
+        });
         return check.data.id
+
   - name: step to create
-    if: ${{ inputs.check-run-id == null }}
+    if: ${{ inputs.check-run-id == '' || inputs.check-run-id == null }}
     id: create-check
     uses: actions/github-script@v8
     with:
@@ -104,7 +116,14 @@ runs:
         const owner = process.env.GITHUB_REPOSITORY.split('/')[0];
         const repo = process.env.GITHUB_REPOSITORY.split('/')[1];
         const name = "${{ inputs.name || github.event.repository.name }}";
-        const conclusion = "${{ inputs.conclusion }}".trim();
+        const status = "${{ inputs.status }}";
+        
+        let conclusion = "${{ inputs.conclusion }}".trim();
+        // Dynamic Fallback: If status is completed but conclusion is blank, default it to success
+        if (status === "completed" && conclusion === "") {
+          conclusion = "success";
+        }
+
         const shouldFailForNeutral = ("${{ inputs.fail-on-neutral }}" === "true");
         const shouldFailForNonSuccess = ("${{ inputs.fail-on-error }}" === "true");
         const successStates = ["neutral", "success"];
@@ -114,7 +133,7 @@ runs:
           repo,
           name,
           head_sha: commitSha,
-          status: "${{ inputs.status }}",
+          status: status,
           output: {
             title: "${{ inputs.title }}",
             summary: "${{ inputs.summary }}",
@@ -122,15 +141,15 @@ runs:
           }
         };
         
-        if("${{ inputs.conclusion }}" !== ""){
-          body.conclusion = "${{ inputs.conclusion }}";
+        if (conclusion !== "") {
+          body.conclusion = conclusion;
         }
 
-        if(conclusion !== ""){
-          if(shouldFailForNonSuccess && !successStates.includes(conclusion)){
+        if (conclusion !== "") {
+          if (shouldFailForNonSuccess && !successStates.includes(conclusion)) {
             core.setFailed("check failed for non successive state");
           }
-          if(shouldFailForNeutral && conclusion == "neutral"){
+          if (shouldFailForNeutral && conclusion == "neutral") {
             core.setFailed("check failed for non successive state");
           }
         }
