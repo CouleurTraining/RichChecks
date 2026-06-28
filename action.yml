@@ -28,21 +28,29 @@ runs:
   - name: step to create check completed
     uses: actions/github-script@v8
     id: check
+    env:
+      INPUT_NAME: ${{ inputs.name }}
+      INPUT_STATUS: ${{ inputs.status }}
+      INPUT_TITLE: ${{ inputs.title }}
+      INPUT_SUMMARY: ${{ inputs.summary }}
+      INPUT_DETAILS: ${{ inputs.details }}
     with:
-      return-encoding: string
+      result-encoding: string
       script: |
+        const [owner, repo] = process.env.GITHUB_REPOSITORY.split('/');
+        
         let body = {
-          owner: process.env.GITHUB_REPOSITORY.split('/')[0],
-          repo: process.env.GITHUB_REPOSITORY.split('/')[1],
-          name: ${{ inputs.name || github.event.repository.name }},
+          owner: owner,
+          repo: repo,
+          name: process.env.INPUT_NAME || process.env.GITHUB_REPOSITORY.split('/')[1],
           head_sha: process.env.GITHUB_SHA,
-          status: ${{ inputs.status }},
+          status: process.env.INPUT_STATUS,
           output: {
-            title: ${{ inputs.title }},
-            summary: ${{ inputs.summary }},
-            text: ${{ inputs.details }}
+            title: process.env.INPUT_TITLE,
+            summary: process.env.INPUT_SUMMARY,
+            text: process.env.INPUT_DETAILS || ''
           }
         };
 
         const check = await github.rest.checks.create(body);
-        return check.data.id
+        return String(check.data.id);
